@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <meta charset="UTF-8">
+    <title>小车控制面板</title>
+    <link rel="stylesheet" href="{{url_for('static', filename='remote_car_controller.css')}}"/>
+    <script src="static/jquery-3.6.0.min.js"></script>
+    <script src="https://unpkg.com/mqtt@4.0.1/dist/mqtt.min.js"></script>
+    <script>
+
+        const options = {
+            clean: true,
+            connectTimeout: 4000,
+            clientId: 'mqttjs_' + Math.random().toString(16).substr(2, 8)
+        };
+
+        const sub_topic = "397d8a08-67c1-48f5-8142-e589ceefb408";
+        const pub_topic = "12df2614-5d91-4c6b-bb94-f27de18ac0e6";
+        const pri_sub_topic = sub_topic + options["clientId"];
+        const connectUrl = 'ws://broker.emqx.io:8083/mqtt';
+        const client = mqtt.connect(connectUrl, options);
+
+        //当重新连接启动触发回调
+        client.on('reconnect', function () {
+            $("#div1").text("正在重连.....");
+        })
+        ;
+        //连接断开后触发的回调
+        client.on("close", function () {
+            $("#div1").text("客户端已断开连接.....");
+        });
+        //从broker接收到断开连接的数据包后发出。MQTT 5.0特性
+        client.on("disconnect", function (packet) {
+            $("#div1").text("从broker接收到断开连接的数据包....." + packet);
+        });
+        //客户端脱机下线触发回调
+        client.on("offline", function () {
+            $("#div1").text("客户端脱机下线.....");
+        });
+
+        //成功连接后触发的回调
+        client.on("connect", function (connack) {
+            $("#div1").text("成功连接上服务器" + new Date());
+            //订阅某主题
+            client.subscribe(pri_sub_topic, {qos: 2});
+            client.subscribe(sub_topic, {qos: 2});
+
+        });
+
+        function publish(obj) {
+            //发布数据
+            /**
+             * client.publish(topic,message,[options], [callback])
+             *
+             * message: Buffer or String
+             * options:{
+             * qos:0, //默认0
+             * retain:false, //默认false
+             * dup:false, //默认false
+             * properties:{}
+             * }
+             * callback:function (err){}
+             */
+            const message = JSON.stringify({
+                "clientId": options["clientId"],
+                "direction": obj === undefined ? "stop" : obj.id
+            });
+            client.publish(pub_topic, message, {qos: 2});
+            //$("#div2").text("客户端发布了数据:" + message);
+        }
+
+        //当客户端接收到发布消息时触发回调
+        /**
+         * topic:收到的数据包的topic
+         * message:收到的数据包的负载playload
+         * packet:收到的数据包
+         */
+        client.on('message', function (topic, message, packet) {
+            $("#div3").text(message);
+        });
+        //页面离开自动断开连接
+        $(window).bind("beforeunload", function () {
+            client.disconnect();
+        });
+
+        document.addEventListener('touchstart touchend', function (event) {
+            // 判断默认行为是否可以被禁用
+            if (event.cancelable) {
+                // 判断默认行为是否已经被禁用
+                if (!event.defaultPrevented) {
+                    event.preventDefault();
+                }
+            }
+        }, false);
+
+
+    </script>
+
+</head>
+<body>
+<div>
+    <div id="div1"></div>
+    <div id="div2"></div>
+    <div id="div3"></div>
+    <div class="control-wrapper">
+        <button id="forward" class="control-btn control-top" ontouchstart="publish(this)"
+                ontouchend="publish()"></button>
+        <button id="left" class="control-btn control-left" ontouchstart="publish(this)" ontouchend="publish()"></button>
+        <button id="back" class="control-btn control-bottom" ontouchstart="publish(this)"
+                ontouchend="publish()"></button>
+        <button id="right" class="control-btn control-right" ontouchstart="publish(this)"
+                ontouchend="publish()"></button>
+        <div class="control-round">
+            <button id="stop" class="control-round-inner" ontouchend="publish()"></button>
+        </div>
+    </div>
+</div>
+</body>
+</html>
