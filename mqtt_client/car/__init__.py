@@ -1,6 +1,6 @@
 import RPi.GPIO as io
-import time
-import sys
+import atexit
+
 
 GPIO_0 = 11
 GPIO_1 = 12
@@ -30,8 +30,10 @@ class RobotCar:
         io.output(GPIO_2, False)
         io.output(GPIO_3, False)
 
-    def __del__(self):
+    @staticmethod
+    def __del__():
         io.cleanup()
+        print("GPIO has been cleaned up")
 
     @staticmethod
     def forward():
@@ -75,6 +77,12 @@ class RobotCar:
 
 
 RobotCar.__init__()
+
+def __exit():
+    RobotCar.__del__()
+
+# regist the exit function
+atexit.register(__exit) 
 
 def __run_car(direction):
     """

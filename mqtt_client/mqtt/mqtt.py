@@ -56,13 +56,16 @@ class Mqtt:
         pass
 
     def on_recv_messag(self, client, userdata, msg):
+        print("sub:" + msg.payload.decode())
         if self.on_message is not None:
             self.on_message(msg.payload.decode())
 
     def publish_all(self, msg):
+        print("pub all:" + msg)
         self.client.publish(pub_notify_property_changed_topic, msg)
 
     def publish_to_client(self, msg, client_id):
+        print("pub to " + client_id + " " + msg)
         self.client.publish(pub_notify_property_changed_topic + client_id, msg)
 
 
